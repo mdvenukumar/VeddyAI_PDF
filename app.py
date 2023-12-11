@@ -97,11 +97,12 @@ def main():
                         st.warning("Error splitting text into chunks. Please try again.")
                 else:
                     st.warning("Error extracting text from PDF. Please check the uploaded files.")
-        else:
-            st.subheader("Ask a Question from the PDF Files")
-            user_question = st.text_input("Type your question here")
-            if user_question:
-                user_input(user_question)
+
+    if "processing_completed" in st.session_state:
+        st.subheader("Ask a Question from the PDF Files")
+        user_question = st.text_input("Type your question here")
+        if user_question:
+            user_input(user_question)
 
     # Hide Streamlit toolbar and add a custom footer
     hide_streamlit_style = """
