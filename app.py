@@ -74,16 +74,6 @@ def main():
     st.set_page_config("Veddy AI")
     st.header("Chat with your PDF 💬")
 
-    # User input and processing
-    user_question = st.text_input("Ask a Question from the PDF Files")
-    if "conversation" not in st.session_state:
-        st.session_state.conversation = None
-    if "chatHistory" not in st.session_state:
-        st.session_state.chatHistory = None
-
-    if user_question:
-        user_input(user_question)
-
     # Sidebar settings
     with st.sidebar:
         st.title("Settings")
@@ -109,6 +99,12 @@ def main():
                         st.warning("Error extracting text from PDF. Please check the uploaded files.")
             else:
                 st.warning("Please upload PDF files before processing.")
+
+    # User input and processing
+    if pdf_docs:
+        user_question = st.text_input("Ask a Question from the PDF Files")
+        if user_question:
+            user_input(user_question)
 
     # Hide Streamlit toolbar and add a custom footer
     hide_streamlit_style = """
