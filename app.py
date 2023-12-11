@@ -74,37 +74,35 @@ def main():
     st.set_page_config("Veddy AI")
     st.header("Chat with your PDF 💬")
 
+    # Instructions for file upload
+    st.subheader("Upload your PDF Files")
+
     # Sidebar settings
-    with st.sidebar:
-        st.title("Settings")
-        st.subheader("Upload your Documents")
-        pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Process Button", accept_multiple_files=True)
+    pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Process Button", accept_multiple_files=True)
 
-        if st.button("Process"):
-            if pdf_docs:
-                with st.spinner("Processing"):
-                    raw_text = get_pdf_text(pdf_docs)
-                    if raw_text:
-                        text_chunks = get_text_chunks(raw_text)
-                        if text_chunks:
-                            vector_store = get_vector_store(text_chunks)
-                            if vector_store:
-                                st.session_state.conversation = get_conversational_chain(vector_store)
-                                st.success("Processing completed successfully.")
-                            else:
-                                st.warning("Error creating vector store. Please try again.")
-                        else:
-                            st.warning("Error splitting text into chunks. Please try again.")
-                    else:
-                        st.warning("Error extracting text from PDF. Please check the uploaded files.")
-            else:
-                st.warning("Please upload PDF files before processing.")
-
-    # User input and processing
     if pdf_docs:
-        user_question = st.text_input("Ask a Question from the PDF Files")
-        if user_question:
-            user_input(user_question)
+        with st.spinner("Uploading..."):
+            # Process uploaded files
+            raw_text = get_pdf_text(pdf_docs)
+            if raw_text:
+                text_chunks = get_text_chunks(raw_text)
+                if text_chunks:
+                    vector_store = get_vector_store(text_chunks)
+                    if vector_store:
+                        st.session_state.conversation = get_conversational_chain(vector_store)
+                        st.success("Processing completed successfully.")
+                        st.subheader("Ask a Question from the PDF Files")
+                        user_question = st.text_input("Type your question here")
+                        if user_question:
+                            user_input(user_question)
+                    else:
+                        st.warning("Error creating vector store. Please try again.")
+                else:
+                    st.warning("Error splitting text into chunks. Please try again.")
+            else:
+                st.warning("Error extracting text from PDF. Please check the uploaded files.")
+    else:
+        st.info("Please upload PDF files.")
 
     # Hide Streamlit toolbar and add a custom footer
     hide_streamlit_style = """
