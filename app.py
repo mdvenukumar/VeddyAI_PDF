@@ -17,10 +17,9 @@ def get_pdf_text(pdf_docs):
     try:
         text = ""
         for pdf in pdf_docs:
-            with open(pdf, 'rb') as file:
-                pdf_reader = PdfReader(file)
-                for page in pdf_reader.pages:
-                    text += page.extract_text()
+            pdf_reader = PdfReader(pdf)
+            for page in pdf_reader.pages:
+                text += page.extract_text()
         return text
     except Exception as e:
         st.error(f"Error extracting text from PDF: {e}")
@@ -40,7 +39,7 @@ def get_text_chunks(text):
 def get_vector_store(text_chunks):
     try:
         embeddings = GooglePalmEmbeddings()
-        vector_store = FAISS.from_texts(text_chunks, embedding=embeddings, num_processes=os.cpu_count())
+        vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
         return vector_store
     except Exception as e:
         st.error(f"Error creating vector store: {e}")
@@ -63,8 +62,10 @@ def user_input(user_question):
         response = st.session_state.conversation({'question': user_question})
         st.session_state.chatHistory = response['chat_history']
         for i, message in enumerate(st.session_state.chatHistory):
-            speaker = "Human" if i % 2 == 0 else "Bot"
-            st.write(f"{speaker}: {message.content}")
+            if i % 2 == 0:
+                st.write("Human: ", message.content)
+            else:
+                st.write("Bot: ", message.content)
     except Exception as e:
         st.error(f"Error processing user input: {e}")
 
