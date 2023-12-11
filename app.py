@@ -1,7 +1,7 @@
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-import google.generativeai as palm
+from google.generativeai import palm
 from langchain.embeddings import GooglePalmEmbeddings
 from langchain.llms import GooglePalm
 from langchain.vectorstores import FAISS
@@ -17,9 +17,10 @@ def get_pdf_text(pdf_docs):
     try:
         text = ""
         for pdf in pdf_docs:
-            pdf_reader = PdfReader(pdf)
-            for page in pdf_reader.pages:
-                text += page.extract_text()
+            with open(pdf, 'rb') as file:
+                pdf_reader = PdfReader(file)
+                for page in pdf_reader.pages:
+                    text += page.extract_text()
         return text
     except Exception as e:
         st.error(f"Error extracting text from PDF: {e}")
@@ -39,7 +40,7 @@ def get_text_chunks(text):
 def get_vector_store(text_chunks):
     try:
         embeddings = GooglePalmEmbeddings()
-        vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+        vector_store = FAISS.from_texts(text_chunks, embedding=embeddings, num_processes=os.cpu_count())
         return vector_store
     except Exception as e:
         st.error(f"Error creating vector store: {e}")
@@ -57,15 +58,13 @@ def get_conversational_chain(vector_store):
         return None
 
 # Function for user input
-def user_input(user_question, conversation_chain):
+def user_input(user_question):
     try:
-        response = conversation_chain({'question': user_question})
+        response = st.session_state.conversation({'question': user_question})
         st.session_state.chatHistory = response['chat_history']
         for i, message in enumerate(st.session_state.chatHistory):
-            if i % 2 == 0:
-                st.write("Human: ", message.content)
-            else:
-                st.write("Bot: ", message.content)
+            speaker = "Human" if i % 2 == 0 else "Bot"
+            st.write(f"{speaker}: {message.content}")
     except Exception as e:
         st.error(f"Error processing user input: {e}")
 
@@ -81,24 +80,28 @@ def main():
     pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Process Button", accept_multiple_files=True)
 
     if pdf_docs:
-        if "processing_completed" not in st.session_state:
-            with st.spinner("Uploading..."):
-                # Process uploaded files
-                raw_text = get_pdf_text(pdf_docs)
-                if raw_text:
-                    text_chunks = get_text_chunks(raw_text)
-                    if text_chunks:
-                        vector_store = get_vector_store(text_chunks)
-                        if vector_store:
-                            st.session_state.conversation_chain = get_conversational_chain(vector_store)
-                            st.success("Processing completed successfully.")
-                            st.session_state.processing_completed = True  # Flag to indicate processing completion
-
-    if "processing_completed" in st.session_state:
-        st.subheader("Ask a Question from the PDF Files")
-        user_question = st.text_input("Type your question here")
-        if user_question:
-            user_input(user_question, st.session_state.conversation_chain)
+        with st.spinner("Uploading..."):
+            # Process uploaded files
+            raw_text = get_pdf_text(pdf_docs)
+            if raw_text:
+                text_chunks = get_text_chunks(raw_text)
+                if text_chunks:
+                    vector_store = get_vector_store(text_chunks)
+                    if vector_store:
+                        st.session_state.conversation = get_conversational_chain(vector_store)
+                        st.success("Processing completed successfully.")
+                        st.subheader("Ask a Question from the PDF Files")
+                        user_question = st.text_input("Type your question here")
+                        if user_question:
+                            user_input(user_question)
+                    else:
+                        st.warning("Error creating vector store. Please try again.")
+                else:
+                    st.warning("Error splitting text into chunks. Please try again.")
+            else:
+                st.warning("Error extracting text from PDF. Please check the uploaded files.")
+    else:
+        st.info("Please upload PDF files.")
 
     # Hide Streamlit toolbar and add a custom footer
     hide_streamlit_style = """
