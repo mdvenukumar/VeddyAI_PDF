@@ -14,41 +14,60 @@ os.environ['GOOGLE_API_KEY'] = st.secrets["API_KEY"]
 
 # Function to get PDF text
 def get_pdf_text(pdf_docs):
-    text = ""
-    for pdf in pdf_docs:
-        pdf_reader = PdfReader(pdf)
-        for page in pdf_reader.pages:
-            text += page.extract_text()
-    return text
+    try:
+        text = ""
+        for pdf in pdf_docs:
+            pdf_reader = PdfReader(pdf)
+            for page in pdf_reader.pages:
+                text += page.extract_text()
+        return text
+    except Exception as e:
+        st.error(f"Error extracting text from PDF: {e}")
+        return None
 
 # Function to get text chunks
 def get_text_chunks(text):
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
-    chunks = text_splitter.split_text(text)
-    return chunks
+    try:
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
+        chunks = text_splitter.split_text(text)
+        return chunks
+    except Exception as e:
+        st.error(f"Error splitting text into chunks: {e}")
+        return None
 
 # Function to get vector store
 def get_vector_store(text_chunks):
-    embeddings = GooglePalmEmbeddings()
-    vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
-    return vector_store
+    try:
+        embeddings = GooglePalmEmbeddings()
+        vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
+        return vector_store
+    except Exception as e:
+        st.error(f"Error creating vector store: {e}")
+        return None
 
 # Function to get conversational chain
 def get_conversational_chain(vector_store):
-    llm = GooglePalm()
-    memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
-    conversation_chain = ConversationalRetrievalChain.from_llm(llm=llm, retriever=vector_store.as_retriever(), memory=memory)
-    return conversation_chain
+    try:
+        llm = GooglePalm()
+        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        conversation_chain = ConversationalRetrievalChain.from_llm(llm=llm, retriever=vector_store.as_retriever(), memory=memory)
+        return conversation_chain
+    except Exception as e:
+        st.error(f"Error creating conversational chain: {e}")
+        return None
 
 # Function for user input
 def user_input(user_question):
-    response = st.session_state.conversation({'question': user_question})
-    st.session_state.chatHistory = response['chat_history']
-    for i, message in enumerate(st.session_state.chatHistory):
-        if i % 2 == 0:
-            st.write("Human: ", message.content)
-        else:
-            st.write("Bot: ", message.content)
+    try:
+        response = st.session_state.conversation({'question': user_question})
+        st.session_state.chatHistory = response['chat_history']
+        for i, message in enumerate(st.session_state.chatHistory):
+            if i % 2 == 0:
+                st.write("Human: ", message.content)
+            else:
+                st.write("Bot: ", message.content)
+    except Exception as e:
+        st.error(f"Error processing user input: {e}")
 
 # Main function
 def main():
@@ -72,12 +91,24 @@ def main():
         pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Process Button", accept_multiple_files=True)
 
         if st.button("Process"):
-            with st.spinner("Processing"):
-                raw_text = get_pdf_text(pdf_docs)
-                text_chunks = get_text_chunks(raw_text)
-                vector_store = get_vector_store(text_chunks)
-                st.session_state.conversation = get_conversational_chain(vector_store)
-                st.success("Done")
+            if pdf_docs:
+                with st.spinner("Processing"):
+                    raw_text = get_pdf_text(pdf_docs)
+                    if raw_text:
+                        text_chunks = get_text_chunks(raw_text)
+                        if text_chunks:
+                            vector_store = get_vector_store(text_chunks)
+                            if vector_store:
+                                st.session_state.conversation = get_conversational_chain(vector_store)
+                                st.success("Processing completed successfully.")
+                            else:
+                                st.warning("Error creating vector store. Please try again.")
+                        else:
+                            st.warning("Error splitting text into chunks. Please try again.")
+                    else:
+                        st.warning("Error extracting text from PDF. Please check the uploaded files.")
+            else:
+                st.warning("Please upload PDF files before processing.")
 
     # Hide Streamlit toolbar and add a custom footer
     hide_streamlit_style = """
