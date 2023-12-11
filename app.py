@@ -64,7 +64,7 @@ def main():
                 vector_store = get_vector_store(text_chunks)
                 st.session_state.conversation = get_conversational_chain(vector_store)
                 st.success("Done")
-                 st.markdown(
+                st.markdown(
             """
             <div style="position: fixed; bottom: 10px; left: 10px; background-color: #ff4b4b; padding: 10px; border-radius: 8px; color: white;">
                 Thevk22
