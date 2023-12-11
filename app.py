@@ -1,7 +1,6 @@
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-import google.generativeai as palm
 from langchain.embeddings import GooglePalmEmbeddings
 from langchain.llms import GooglePalm
 from langchain.vectorstores import FAISS
@@ -9,8 +8,14 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 import os
 
-os.environ['GOOGLE_API_KEY'] = st.secrets.get("API_KEY", "")
+# Checking if the API key is set
+if "API_KEY" not in st.secrets:
+    st.warning("Please set your Google API key in Streamlit secrets.")
+    st.stop()
 
+os.environ['GOOGLE_API_KEY'] = st.secrets["API_KEY"]
+
+# Improved function to get text from PDFs with error handling
 def get_pdf_text(pdf_docs):
     text = ""
     try:
@@ -18,26 +23,31 @@ def get_pdf_text(pdf_docs):
             pdf_reader = PdfReader(pdf)
             for page in pdf_reader.pages:
                 text += page.extract_text()
-        return text
     except Exception as e:
-        st.error(f"Error extracting text from PDF: {str(e)}")
+        st.error(f"Error extracting text from PDF: {e}")
+    return text
 
+# Improved function to get text chunks with error handling
 def get_text_chunks(text):
     try:
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
         chunks = text_splitter.split_text(text)
         return chunks
     except Exception as e:
-        st.error(f"Error splitting text into chunks: {str(e)}")
+        st.error(f"Error splitting text into chunks: {e}")
+        return []
 
+# Improved function to get vector store with error handling
 def get_vector_store(text_chunks):
     try:
         embeddings = GooglePalmEmbeddings()
         vector_store = FAISS.from_texts(text_chunks, embedding=embeddings)
         return vector_store
     except Exception as e:
-        st.error(f"Error creating vector store: {str(e)}")
+        st.error(f"Error creating vector store: {e}")
+        return None
 
+# Improved function to get conversational chain with error handling
 def get_conversational_chain(vector_store):
     try:
         llm = GooglePalm()
@@ -45,8 +55,10 @@ def get_conversational_chain(vector_store):
         conversation_chain = ConversationalRetrievalChain.from_llm(llm=llm, retriever=vector_store.as_retriever(), memory=memory)
         return conversation_chain
     except Exception as e:
-        st.error(f"Error creating conversational chain: {str(e)}")
+        st.error(f"Error creating conversational chain: {e}")
+        return None
 
+# Improved function for user input with error handling
 def user_input(user_question):
     try:
         response = st.session_state.conversation({'question': user_question})
@@ -57,66 +69,65 @@ def user_input(user_question):
             else:
                 st.write("Bot: ", message.content)
     except Exception as e:
-        st.error(f"Error processing user input: {str(e)}")
+        st.error(f"Error processing user input: {e}")
 
+# Main function with enhanced UI and error handling
 def main():
-    st.set_page_config("Veddy AI")
-    st.header("Chat with your PDF 💬")
+    st.set_page_config("Veddy AI", layout="wide")
+    st.title("Chat with your PDF 💬")
     
-    # Check if PDFs are uploaded
-    if "pdf_docs" not in st.session_state:
-        st.warning("Open the left sidebar to upload your PDF and click 'Process'")
-    
+    # Improved UI for user input
     user_question = st.text_input("Ask a Question from the PDF Files")
     
-    # Check if PDFs are uploaded before processing user input
-    if not st.session_state.pdf_docs and user_question:
-        st.warning("Upload your PDF files first before asking a question.")
-    
+    # Initializing session state variables
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
     if "chatHistory" not in st.session_state:
         st.session_state.chatHistory = None
     
+    # Processing user input
     if user_question:
         user_input(user_question)
     
+    # Improved UI for sidebar settings
     with st.sidebar:
         st.title("Settings")
         st.subheader("Upload your Documents")
-        st.warning("Open the sidebar to upload your PDF and click 'Process'")
-        pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Process Button", accept_multiple_files=True, key="pdf_docs")
+        pdf_docs = st.file_uploader("Upload your PDF Files", accept_multiple_files=True)
         
+        # Processing PDFs and building the conversational chain
         if st.button("Process"):
-            if not pdf_docs:
-                st.warning("Upload your PDF files first.")
-            else:
+            if pdf_docs:
                 with st.spinner("Processing"):
-                    try:
-                        raw_text = get_pdf_text(pdf_docs)
-                        text_chunks = get_text_chunks(raw_text)
-                        vector_store = get_vector_store(text_chunks)
+                    raw_text = get_pdf_text(pdf_docs)
+                    text_chunks = get_text_chunks(raw_text)
+                    
+                    # Error handling for vector store creation
+                    vector_store = get_vector_store(text_chunks)
+                    if vector_store is not None:
                         st.session_state.conversation = get_conversational_chain(vector_store)
-                        st.success("Done")
-                    except Exception as e:
-                        st.error(f"Error processing PDF documents: {str(e)}")
-
+                        st.success("Processing complete")
+            else:
+                st.warning("Please upload PDF files before processing.")
+    
+    # Hiding Streamlit toolbar and footer
     hide_streamlit_style = """
-            <style>
-            [data-testid="stToolbar"] {visibility: hidden !important;}
-            footer {visibility: hidden !important;}
-            </style>
-            """
+        <style>
+        [data-testid="stToolbar"] {visibility: hidden !important;}
+        footer {visibility: hidden !important;}
+        </style>
+        """
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+    
+    # Adding a signature
     st.markdown(
-            """
-            <div style="position: fixed; bottom: 10px; left: 10px; background-color: #ff4b4b; padding: 10px; border-radius: 8px; color: white;">
-                Thevk22
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
+        """
+        <div style="position: fixed; bottom: 10px; left: 10px; background-color: #ff4b4b; padding: 10px; border-radius: 8px; color: white;">
+            Thevk22
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
