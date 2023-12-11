@@ -10,7 +10,13 @@ from langchain.memory import ConversationBufferMemory
 import os
 
 os.environ['GOOGLE_API_KEY'] =  st.secrets["API_KEY"]
-
+hide_streamlit_style = """
+            <style>
+            [data-testid="stToolbar"] {visibility: hidden !important;}
+            footer {visibility: hidden !important;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 def get_pdf_text(pdf_docs):
     text=""
     for pdf in pdf_docs:
