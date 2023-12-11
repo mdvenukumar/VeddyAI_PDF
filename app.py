@@ -62,8 +62,7 @@ def user_input(user_question, input_key):
     try:
         if st.session_state.conversation:
             response = st.session_state.conversation({'question': user_question})
-            st.session_state.chatHistory = response.get('chat_history', [])
-            for i, message in enumerate(st.session_state.chatHistory):
+            for i, message in enumerate(response['chat_history']):
                 role = "Human" if i % 2 == 0 else "Bot"
                 st.write(f"{role}: {message.content}")
         else:
@@ -87,10 +86,6 @@ def main():
     
     # Improved UI for user input
     user_question = st.text_input("Ask a Question from the PDF Files", key=user_input_key)
-    
-    # Initializing session state variables
-    st.session_state.conversation = st.session_state.get("conversation", None)
-    st.session_state.chatHistory = st.session_state.get("chatHistory", None)
     
     # Processing user input
     if user_question:
