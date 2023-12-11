@@ -1,7 +1,6 @@
 import streamlit as st
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-import google.generativeai as palm
 from langchain.embeddings import GooglePalmEmbeddings
 from langchain.llms import GooglePalm
 from langchain.vectorstores import FAISS
@@ -9,23 +8,26 @@ from langchain.chains import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
 import os
 
-# Set API Key
+# Checking if the API key is set
+if "API_KEY" not in st.secrets:
+    st.warning("Please set your Google API key in Streamlit secrets.")
+    st.stop()
+
 os.environ['GOOGLE_API_KEY'] = st.secrets["API_KEY"]
 
-# Function to get PDF text
+# Improved function to get text from PDFs with error handling
 def get_pdf_text(pdf_docs):
+    text = ""
     try:
-        text = ""
         for pdf in pdf_docs:
             pdf_reader = PdfReader(pdf)
             for page in pdf_reader.pages:
                 text += page.extract_text()
-        return text
     except Exception as e:
         st.error(f"Error extracting text from PDF: {e}")
-        return None
+    return text
 
-# Function to get text chunks
+# Improved function to get text chunks with error handling
 def get_text_chunks(text):
     try:
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
@@ -33,9 +35,9 @@ def get_text_chunks(text):
         return chunks
     except Exception as e:
         st.error(f"Error splitting text into chunks: {e}")
-        return None
+        return []
 
-# Function to get vector store
+# Improved function to get vector store with error handling
 def get_vector_store(text_chunks):
     try:
         embeddings = GooglePalmEmbeddings()
@@ -45,7 +47,7 @@ def get_vector_store(text_chunks):
         st.error(f"Error creating vector store: {e}")
         return None
 
-# Function to get conversational chain
+# Improved function to get conversational chain with error handling
 def get_conversational_chain(vector_store):
     try:
         llm = GooglePalm()
@@ -56,7 +58,7 @@ def get_conversational_chain(vector_store):
         st.error(f"Error creating conversational chain: {e}")
         return None
 
-# Function for user input
+# Improved function for user input with error handling
 def user_input(user_question):
     try:
         response = st.session_state.conversation({'question': user_question})
@@ -69,42 +71,46 @@ def user_input(user_question):
     except Exception as e:
         st.error(f"Error processing user input: {e}")
 
-# Main function
+# Main function with enhanced UI and error handling
 def main():
-    st.set_page_config("Veddy AI")
-    st.header("Chat with your PDF 💬")
-
-    # Instructions for file upload
-    st.subheader("Upload your PDF Files")
-
-    # Sidebar settings
-    pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Process Button", accept_multiple_files=True)
-
-    if pdf_docs:
-        with st.spinner("Uploading..."):
-            # Process uploaded files
-            raw_text = get_pdf_text(pdf_docs)
-            if raw_text:
-                text_chunks = get_text_chunks(raw_text)
-                if text_chunks:
+    st.set_page_config("Veddy AI", layout="wide")
+    st.title("Chat with your PDF 💬")
+    
+    # Improved UI for user input
+    user_question = st.text_input("Ask a Question from the PDF Files")
+    
+    # Initializing session state variables
+    if "conversation" not in st.session_state:
+        st.session_state.conversation = None
+    if "chatHistory" not in st.session_state:
+        st.session_state.chatHistory = None
+    
+    # Processing user input
+    if user_question:
+        user_input(user_question)
+    
+    # Improved UI for sidebar settings
+    with st.sidebar:
+        st.title("Settings")
+        st.subheader("Upload your Documents")
+        pdf_docs = st.file_uploader("Upload your PDF Files", accept_multiple_files=True)
+        
+        # Processing PDFs and building the conversational chain
+        if st.button("Process"):
+            if pdf_docs:
+                with st.spinner("Processing"):
+                    raw_text = get_pdf_text(pdf_docs)
+                    text_chunks = get_text_chunks(raw_text)
+                    
+                    # Error handling for vector store creation
                     vector_store = get_vector_store(text_chunks)
-                    if vector_store:
+                    if vector_store is not None:
                         st.session_state.conversation = get_conversational_chain(vector_store)
-                        st.success("Processing completed successfully.")
-                        st.subheader("Ask a Question from the PDF Files")
-                        user_question = st.text_input("Type your question here")
-                        if user_question:
-                            user_input(user_question)
-                    else:
-                        st.warning("Error creating vector store. Please try again.")
-                else:
-                    st.warning("Error splitting text into chunks. Please try again.")
+                        st.success("Processing complete")
             else:
-                st.warning("Error extracting text from PDF. Please check the uploaded files.")
-    else:
-        st.info("Please upload PDF files.")
-
-    # Hide Streamlit toolbar and add a custom footer
+                st.warning("Please upload PDF files before processing.")
+    
+    # Hiding Streamlit toolbar and footer
     hide_streamlit_style = """
         <style>
         [data-testid="stToolbar"] {visibility: hidden !important;}
@@ -112,6 +118,8 @@ def main():
         </style>
         """
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+    
+    # Adding a signature
     st.markdown(
         """
         <div style="position: fixed; bottom: 10px; left: 10px; background-color: #ff4b4b; padding: 10px; border-radius: 8px; color: white;">
