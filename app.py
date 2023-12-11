@@ -57,9 +57,9 @@ def get_conversational_chain(vector_store):
         return None
 
 # Function for user input
-def user_input(user_question):
+def user_input(user_question, conversation_chain):
     try:
-        response = st.session_state.conversation({'question': user_question})
+        response = conversation_chain({'question': user_question})
         st.session_state.chatHistory = response['chat_history']
         for i, message in enumerate(st.session_state.chatHistory):
             if i % 2 == 0:
@@ -90,19 +90,15 @@ def main():
                     if text_chunks:
                         vector_store = get_vector_store(text_chunks)
                         if vector_store:
-                            st.session_state.conversation = get_conversational_chain(vector_store)
+                            st.session_state.conversation_chain = get_conversational_chain(vector_store)
                             st.success("Processing completed successfully.")
                             st.session_state.processing_completed = True  # Flag to indicate processing completion
-                    else:
-                        st.warning("Error splitting text into chunks. Please try again.")
-                else:
-                    st.warning("Error extracting text from PDF. Please check the uploaded files.")
 
     if "processing_completed" in st.session_state:
         st.subheader("Ask a Question from the PDF Files")
         user_question = st.text_input("Type your question here")
         if user_question:
-            user_input(user_question)
+            user_input(user_question, st.session_state.conversation_chain)
 
     # Hide Streamlit toolbar and add a custom footer
     hide_streamlit_style = """
