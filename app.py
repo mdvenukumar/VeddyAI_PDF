@@ -66,14 +66,12 @@ def main():
     # Check if PDFs are uploaded
     if "pdf_docs" not in st.session_state:
         st.warning("Open the left sidebar to upload your PDF and click 'Process'")
-        return
     
     user_question = st.text_input("Ask a Question from the PDF Files")
     
     # Check if PDFs are uploaded before processing user input
     if not st.session_state.pdf_docs and user_question:
         st.warning("Upload your PDF files first before asking a question.")
-        return
     
     if "conversation" not in st.session_state:
         st.session_state.conversation = None
