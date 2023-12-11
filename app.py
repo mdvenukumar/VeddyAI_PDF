@@ -58,7 +58,7 @@ def get_conversational_chain(vector_store):
         st.error(f"Error creating conversational chain: {e}")
         return None
 
-# Improved function for user input with error handling
+# Improved function for user input with error handling and input reset
 def user_input(user_question):
     try:
         response = st.session_state.conversation({'question': user_question})
@@ -68,16 +68,22 @@ def user_input(user_question):
                 st.write("Human: ", message.content)
             else:
                 st.write("Bot: ", message.content)
+        
+        # Clear the input field after processing the user question
+        st.text_input("Ask a Question from the PDF Files", value="", key="user_input")
     except Exception as e:
         st.error(f"Error processing user input: {e}")
 
 # Main function with enhanced UI and error handling
 def main():
     st.set_page_config("Veddy AI", layout="wide")
+    
+    # Improved UI for the header
     st.title("Chat with your PDF 💬")
+    st.markdown("---")
     
     # Improved UI for user input
-    user_question = st.text_input("Ask a Question from the PDF Files")
+    user_question = st.text_input("Ask a Question from the PDF Files", key="user_input")
     
     # Initializing session state variables
     if "conversation" not in st.session_state:
@@ -107,6 +113,8 @@ def main():
                     if vector_store is not None:
                         st.session_state.conversation = get_conversational_chain(vector_store)
                         st.success("Processing complete")
+                    else:
+                        st.warning("Processing failed. Please check the logs for details.")
             else:
                 st.warning("Please upload PDF files before processing.")
     
@@ -119,11 +127,11 @@ def main():
         """
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
     
-    # Adding a signature
+    # Adding a signature with improved styling
     st.markdown(
         """
-        <div style="position: fixed; bottom: 10px; left: 10px; background-color: #ff4b4b; padding: 10px; border-radius: 8px; color: white;">
-            Thevk22
+        <div style="position: fixed; bottom: 10px; left: 10px; background-color: #ff4b4b; padding: 10px; border-radius: 8px; color: white; font-size: 14px;">
+            Powered by Veddy AI
         </div>
         """,
         unsafe_allow_html=True
