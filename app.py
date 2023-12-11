@@ -50,7 +50,7 @@ def get_vector_store(text_chunks):
 def get_conversational_chain(vector_store):
     try:
         llm = GooglePalm()
-        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=False)
+        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
         conversation_chain = ConversationalRetrievalChain.from_llm(llm=llm, retriever=vector_store.as_retriever(), memory=memory)
         return conversation_chain
     except Exception as e:
@@ -58,7 +58,7 @@ def get_conversational_chain(vector_store):
         return None
 
 # Function for user input with error handling and input reset
-def user_input(user_question):
+def user_input(user_question, input_key):
     try:
         if st.session_state.conversation:
             response = st.session_state.conversation({'question': user_question})
@@ -70,7 +70,7 @@ def user_input(user_question):
             st.warning("Please process PDF files first.")
         
         # Clear the input field after processing the user question
-        st.text_input("Ask a Question from the PDF Files", value="", key="user_input")
+        st.text_input("Ask a Question from the PDF Files", value="", key=input_key)
     except Exception as e:
         st.error(f"Error processing user input: {e}")
 
@@ -82,8 +82,11 @@ def main():
     st.title("Chat with your PDF 💬")
     st.markdown("---")
     
+    # Generating a unique key for the user input
+    user_input_key = "user_input_" + str(hash("user_input"))
+    
     # Improved UI for user input
-    user_question = st.text_input("Ask a Question from the PDF Files", key="user_input")
+    user_question = st.text_input("Ask a Question from the PDF Files", key=user_input_key)
     
     # Initializing session state variables
     st.session_state.conversation = st.session_state.get("conversation", None)
@@ -91,7 +94,7 @@ def main():
     
     # Processing user input
     if user_question:
-        user_input(user_question)
+        user_input(user_question, user_input_key)
     
     # Improved UI for sidebar settings
     with st.sidebar:
