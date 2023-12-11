@@ -81,28 +81,27 @@ def main():
     pdf_docs = st.file_uploader("Upload your PDF Files and Click on the Process Button", accept_multiple_files=True)
 
     if pdf_docs:
-        with st.spinner("Uploading..."):
-            # Process uploaded files
-            raw_text = get_pdf_text(pdf_docs)
-            if raw_text:
-                text_chunks = get_text_chunks(raw_text)
-                if text_chunks:
-                    vector_store = get_vector_store(text_chunks)
-                    if vector_store:
-                        st.session_state.conversation = get_conversational_chain(vector_store)
-                        st.success("Processing completed successfully.")
-                        st.subheader("Ask a Question from the PDF Files")
-                        user_question = st.text_input("Type your question here")
-                        if user_question:
-                            user_input(user_question)
+        if "processing_completed" not in st.session_state:
+            with st.spinner("Uploading..."):
+                # Process uploaded files
+                raw_text = get_pdf_text(pdf_docs)
+                if raw_text:
+                    text_chunks = get_text_chunks(raw_text)
+                    if text_chunks:
+                        vector_store = get_vector_store(text_chunks)
+                        if vector_store:
+                            st.session_state.conversation = get_conversational_chain(vector_store)
+                            st.success("Processing completed successfully.")
+                            st.session_state.processing_completed = True  # Flag to indicate processing completion
                     else:
-                        st.warning("Error creating vector store. Please try again.")
+                        st.warning("Error splitting text into chunks. Please try again.")
                 else:
-                    st.warning("Error splitting text into chunks. Please try again.")
-            else:
-                st.warning("Error extracting text from PDF. Please check the uploaded files.")
-    else:
-        st.info("Please upload PDF files.")
+                    st.warning("Error extracting text from PDF. Please check the uploaded files.")
+        else:
+            st.subheader("Ask a Question from the PDF Files")
+            user_question = st.text_input("Type your question here")
+            if user_question:
+                user_input(user_question)
 
     # Hide Streamlit toolbar and add a custom footer
     hide_streamlit_style = """
