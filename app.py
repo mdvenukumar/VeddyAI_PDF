@@ -15,19 +15,18 @@ if "API_KEY" not in st.secrets:
 
 os.environ['GOOGLE_API_KEY'] = st.secrets["API_KEY"]
 
-# Improved function to get text from PDFs with error handling
+# Function to get text from PDFs with error handling
 def get_pdf_text(pdf_docs):
     text = ""
     try:
         for pdf in pdf_docs:
             pdf_reader = PdfReader(pdf)
-            for page in pdf_reader.pages:
-                text += page.extract_text()
+            text += ''.join(page.extract_text() for page in pdf_reader.pages)
     except Exception as e:
         st.error(f"Error extracting text from PDF: {e}")
     return text
 
-# Improved function to get text chunks with error handling
+# Function to get text chunks with error handling
 def get_text_chunks(text):
     try:
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=20)
@@ -37,7 +36,7 @@ def get_text_chunks(text):
         st.error(f"Error splitting text into chunks: {e}")
         return []
 
-# Improved function to get vector store with error handling
+# Function to get vector store with error handling
 def get_vector_store(text_chunks):
     try:
         embeddings = GooglePalmEmbeddings()
@@ -47,27 +46,28 @@ def get_vector_store(text_chunks):
         st.error(f"Error creating vector store: {e}")
         return None
 
-# Improved function to get conversational chain with error handling
+# Function to get conversational chain with error handling
 def get_conversational_chain(vector_store):
     try:
         llm = GooglePalm()
-        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=True)
+        memory = ConversationBufferMemory(memory_key="chat_history", return_messages=False)
         conversation_chain = ConversationalRetrievalChain.from_llm(llm=llm, retriever=vector_store.as_retriever(), memory=memory)
         return conversation_chain
     except Exception as e:
         st.error(f"Error creating conversational chain: {e}")
         return None
 
-# Improved function for user input with error handling and input reset
+# Function for user input with error handling and input reset
 def user_input(user_question):
     try:
-        response = st.session_state.conversation({'question': user_question})
-        st.session_state.chatHistory = response['chat_history']
-        for i, message in enumerate(st.session_state.chatHistory):
-            if i % 2 == 0:
-                st.write("Human: ", message.content)
-            else:
-                st.write("Bot: ", message.content)
+        if st.session_state.conversation:
+            response = st.session_state.conversation({'question': user_question})
+            st.session_state.chatHistory = response.get('chat_history', [])
+            for i, message in enumerate(st.session_state.chatHistory):
+                role = "Human" if i % 2 == 0 else "Bot"
+                st.write(f"{role}: {message.content}")
+        else:
+            st.warning("Please process PDF files first.")
         
         # Clear the input field after processing the user question
         st.text_input("Ask a Question from the PDF Files", value="", key="user_input")
@@ -86,10 +86,8 @@ def main():
     user_question = st.text_input("Ask a Question from the PDF Files", key="user_input")
     
     # Initializing session state variables
-    if "conversation" not in st.session_state:
-        st.session_state.conversation = None
-    if "chatHistory" not in st.session_state:
-        st.session_state.chatHistory = None
+    st.session_state.conversation = st.session_state.get("conversation", None)
+    st.session_state.chatHistory = st.session_state.get("chatHistory", None)
     
     # Processing user input
     if user_question:
@@ -110,7 +108,7 @@ def main():
                     
                     # Error handling for vector store creation
                     vector_store = get_vector_store(text_chunks)
-                    if vector_store is not None:
+                    if vector_store:
                         st.session_state.conversation = get_conversational_chain(vector_store)
                         st.success("Processing complete")
                     else:
